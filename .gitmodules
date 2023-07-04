@@ -1,0 +1,3 @@
+[submodule "swin-transformer"]
+	path = swin-transformer
+	url = https://github.com/kazu-gor/Swin-Transformer.git
