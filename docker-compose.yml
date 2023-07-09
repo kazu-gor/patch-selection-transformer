@@ -1,0 +1,40 @@
+version: '2.3'
+services:
+  dev:
+    container_name: pst
+    image: kazugor/pst:latest
+    # command: /bin/bash
+    runtime: nvidia
+    working_dir: /home/student/git/laboratory/python/py/patch-selection-transformer
+    volumes:
+        - /tmp/.X11-unix:/tmp/.X11-unix
+        - /home/student/program_murano:/home/student/program_murano
+        - /home/student/git:/home/student/git
+        - /home/student/.config/nvim:/home/student/.config/nvim
+        - /home/student/.zshrc:/home/student/.zshrc
+        - /home/student/.zsh_history:/home/student/.zsh_history
+        - /home/student/.zsh:/home/student/.zsh
+        - /home/student/node_modules:/home/student/node_modules
+        - /home/student/.npm-global:/home/student/.npm-global
+        - /home/student/.fzf:/home/student/.fzf
+        - /home/student/.fzf.zsh:/home/student/.fzf.zsh
+        - /usr/bin/fd:/usr/bin/fd
+        - /home/student/nvim:/home/student/nvim
+        - /home/student/.local/share/nvim:/home/student/.local/share/nvim
+        - /home/student/.local/state/nvim:/home/student/.local/state/nvim
+        - /home/student/.netrc:/home/student/.netrc
+    environment:
+        - DISPLAY=unix$DISPLAY
+        - TERM=xterm-256color
+        - HTTP_PROXY=http://proxy.itc.kansai-u.ac.jp:8080/
+        - HTTPS_PROXY=http://proxy.itc.kansai-u.ac.jp:8080/
+        - NO_PROXY=localhost,127.0.0.0/8,::1
+        - FTP_PROXY=http://proxy.itc.kansai-u.ac.jp:8080/
+    # ports:
+    #     - "8888:8888"
+    ulimits:
+        memlock: -1
+        stack: 67108864
+    shm_size: 1g
+    command: tail -f /dev/null
+    privileged: true
