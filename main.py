@@ -1,12 +1,10 @@
 import os
-import sys
 import time
 import json
 import random
 import datetime
 import argparse
 import numpy as np
-from pandas.io.parsers.readers import parser_defaults
 
 import torch
 import torch.backends.cudnn as cudnn
