@@ -1,3 +1,6 @@
 [submodule "swin-transformer"]
 	path = swin-transformer
 	url = https://github.com/kazu-gor/Swin-Transformer.git
+[submodule "swin-mae"]
+	path = swin-mae
+	url = https://github.com/kazu-gor/Swin-Transformer.git
