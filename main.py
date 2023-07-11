@@ -20,7 +20,7 @@ from config import get_config
 from models import build_model
 from logger import create_logger
 from lr_scheduler import build_scheduler
-from utils import save_checkpoint, reduce_tensor
+from utils import save_checkpoint, reduce_tensor, auto_resume_helper
 
 
 def parse_option():
@@ -90,9 +90,16 @@ def main(config, args):
     gt_root_val = '{}/masks/'.format(args.val_path)
 
     # define dataloader
-    train_loader = get_loader(image_root, gt_root, batchsize=args.batchsize, trainsize=args.trainsize)
-    val_loader = get_loader(image_root_val, gt_root_val, batchsize=args.batchsize, trainsize=args.trainsize, phase='val')
-    dataloaders_dict = {"train": train_loader, "val": val_loader}
+    train_loader = get_loader(image_root,
+                              gt_root,
+                              batchsize=config.DATA.BATCH_SIZE,
+                              trainsize=config.DATA.IMG_SIZE)
+    val_loader = get_loader(image_root_val,
+                            gt_root_val,
+                            batchsize=config.DATA.BATCH_SIZE,
+                            trainsize=config.DATA.IMG_SIZE,
+                            phase='val')
+    # dataloaders_dict = {"train": train_loader, "val": val_loader}
 
     # define model
     logger.info(f"Creating model:{config.MODEL.TYPE}/{config.MODEL.NAME}")
@@ -109,7 +116,9 @@ def main(config, args):
     model_without_ddp = model
 
     # define optimizer
-    params = [p for v in model.values() for p in list(v.parameters())]
+    # TODO: Adam
+    # params = [p for v in model.values() for p in list(v.parameters())]
+    params = [p for p in model.parameters()]
     optimizer = torch.optim.Adam(
         [
             dict(params=params, lr=args.lr, betas=(args.beta1, args.beta2)),
@@ -130,7 +139,7 @@ def main(config, args):
     #     criterion = LabelSmoothingCrossEntropy(smoothing=config.MODEL.LABEL_SMOOTHING)
     # else:
     #     criterion = torch.nn.CrossEntropyLoss()
-    criterion = SmoothCrossEntropy(smoothing=0.1)
+    criterion = SmoothCrossEntropy(alpha=0.1)
 
     max_accuracy = 0.0
 
@@ -200,8 +209,12 @@ def train_one_epoch(config, model, criterion, data_loader, optimizer, epoch, lr_
 
         with torch.cuda.amp.autocast(enabled=config.AMP_ENABLE):
             outputs = model(samples)
-        loss = criterion(outputs, targets)
-        loss = loss / config.TRAIN.ACCUMULATION_STEPS
+        loss1 = criterion(outputs['stage1'], targets)
+        loss2 = criterion(outputs['stage2'], targets)
+        loss3 = criterion(outputs['stage3'], targets)
+        loss = loss1 / config.TRAIN.ACCUMULATION_STEPS + \
+            loss2 / config.TRAIN.ACCUMULATION_STEPS + \
+            loss3 / config.TRAIN.ACCUMULATION_STEPS
 
         if (idx + 1) % config.TRAIN.ACCUMULATION_STEPS == 0:
             optimizer.zero_grad()
@@ -289,29 +302,30 @@ if __name__ == "__main__":
     random.seed(seed)
     cudnn.benchmark = True
 
-    # linear scale the learning rate according to total batch size, may not be optimal
-    linear_scaled_lr = config.TRAIN.BASE_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
-    linear_scaled_warmup_lr = config.TRAIN.WARMUP_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
-    linear_scaled_min_lr = config.TRAIN.MIN_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
-    # gradient accumulation also need to scale the learning rate
-    if config.TRAIN.ACCUMULATION_STEPS > 1:
-        linear_scaled_lr = linear_scaled_lr * config.TRAIN.ACCUMULATION_STEPS
-        linear_scaled_warmup_lr = linear_scaled_warmup_lr * config.TRAIN.ACCUMULATION_STEPS
-        linear_scaled_min_lr = linear_scaled_min_lr * config.TRAIN.ACCUMULATION_STEPS
-    config.defrost()
-    config.TRAIN.BASE_LR = linear_scaled_lr
-    config.TRAIN.WARMUP_LR = linear_scaled_warmup_lr
-    config.TRAIN.MIN_LR = linear_scaled_min_lr
-    config.freeze()
+#     # linear scale the learning rate according to total batch size, may not be optimal
+#     linear_scaled_lr = config.TRAIN.BASE_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
+#     linear_scaled_warmup_lr = config.TRAIN.WARMUP_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
+#     linear_scaled_min_lr = config.TRAIN.MIN_LR * config.DATA.BATCH_SIZE * dist.get_world_size() / 512.0
+#     # gradient accumulation also need to scale the learning rate
+#     if config.TRAIN.ACCUMULATION_STEPS > 1:
+#         linear_scaled_lr = linear_scaled_lr * config.TRAIN.ACCUMULATION_STEPS
+#         linear_scaled_warmup_lr = linear_scaled_warmup_lr * config.TRAIN.ACCUMULATION_STEPS
+#         linear_scaled_min_lr = linear_scaled_min_lr * config.TRAIN.ACCUMULATION_STEPS
+#     config.defrost()
+#     config.TRAIN.BASE_LR = linear_scaled_lr
+#     config.TRAIN.WARMUP_LR = linear_scaled_warmup_lr
+#     config.TRAIN.MIN_LR = linear_scaled_min_lr
+#     config.freeze()
 
     os.makedirs(config.OUTPUT, exist_ok=True)
-    logger = create_logger(output_dir=config.OUTPUT, dist_rank=dist.get_rank(), name=f"{config.MODEL.NAME}")
+    # logger = create_logger(output_dir=config.OUTPUT, dist_rank=dist.get_rank(), name=f"{config.MODEL.NAME}")
+    logger = create_logger(output_dir=config.OUTPUT, name=f"{config.MODEL.NAME}")
 
-    if dist.get_rank() == 0:
-        path = os.path.join(config.OUTPUT, "config.json")
-        with open(path, "w") as f:
-            f.write(config.dump())
-        logger.info(f"Full config saved to {path}")
+    # if dist.get_rank() == 0:
+    #     path = os.path.join(config.OUTPUT, "config.json")
+    #     with open(path, "w") as f:
+    #         f.write(config.dump())
+    #     logger.info(f"Full config saved to {path}")
 
     # print config
     logger.info(config.dump())
