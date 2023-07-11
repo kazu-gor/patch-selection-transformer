@@ -61,28 +61,26 @@ class PolypDataset(data.Dataset):
         self.transform2 = get_augmentation()
         self.phase = phase
 
-        self.augmentations = [
-            albu.Rotate(limit=[-10, 10], p=1.0),
-            albu.ShiftScaleRotate(shift_limit=[-0.0625, 0.0625], scale_limit=[-0.1, 0.1], rotate_limit=[-30, 30],
-                                  interpolation=1, border_mode=4, value=None, mask_value=None, p=1.0),
-            albu.RandomBrightness(limit=0.2, p=1.0),
-            albu.RandomContrast(limit=0.2, p=1.0),
-            # albu.RandomBrightnessContrast(brightness_limit=0.5, contrast_limit=0.5, brightness_by_max=True, p=1.0),
-            albu.RandomGamma(gamma_limit=[50, 150], p=1.0),
-            # albu.RandomGridShuffle(grid=(2, 2), p=1.0),
-            # albu.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
-            albu.RandomSizedCrop([300, 400], 416, 416, p=1.0),
-            # albu.CoarseDropout(max_holes=16, max_height=32, max_width=32, min_holes=1, min_height=8,
-            #                    min_width=8, fill_value=0, p=1.0)
-        ]
+        # self.augmentations = [
+        #     albu.Rotate(limit=[-10, 10], p=1.0),
+        #     albu.ShiftScaleRotate(shift_limit=[-0.0625, 0.0625], scale_limit=[-0.1, 0.1], rotate_limit=[-30, 30],
+        #                           interpolation=1, border_mode=4, value=None, mask_value=None, p=1.0),
+        #     albu.RandomBrightness(limit=0.2, p=1.0),
+        #     albu.RandomContrast(limit=0.2, p=1.0),
+        #     # albu.RandomBrightnessContrast(brightness_limit=0.5, contrast_limit=0.5, brightness_by_max=True, p=1.0),
+        #     albu.RandomGamma(gamma_limit=[50, 150], p=1.0),
+        #     # albu.RandomGridShuffle(grid=(2, 2), p=1.0),
+        #     # albu.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
+        #     albu.RandomSizedCrop([300, 400], 416, 416, p=1.0),
+        #     # albu.CoarseDropout(max_holes=16, max_height=32, max_width=32, min_holes=1, min_height=8,
+        #     #                    min_width=8, fill_value=0, p=1.0)
+        # ]
 
         self.transform3 = albu.Compose(
             [
                 albu.ShiftScaleRotate(shift_limit=0.15, scale_limit=0.15, rotate_limit=25, p=0.5, border_mode=0),
-                albu.RandomSizedCrop(),
                 albu.ColorJitter(),
                 albu.HorizontalFlip(),
-                # albu.VerticalFlip()
             ]
         )
 
