@@ -35,6 +35,6 @@ services:
     ulimits:
         memlock: -1
         stack: 67108864
-    shm_size: 1g
+    shm_size: 2g
     command: tail -f /dev/null
     privileged: true

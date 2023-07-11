@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:20.12-py3
+FROM nvcr.io/nvidia/pytorch:22.01-py3
 
 MAINTAINER Kazuki Iwasaki <k897706@kansai-u.ac.jp>
 
@@ -49,7 +49,22 @@ RUN echo '${USER} ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 #
 RUN apt-get -y clean all
 RUN rm -rf /var/lib/apt/lists/*
-RUN apt-get update -y && apt-get install -y zsh git fd-find libfuse2 fuse3 ffmpeg libsm6 libxext6
+RUN apt-get update -y && apt-get install -y \
+    zsh \
+    git \
+    fd-find \
+    libfuse2 \
+    fuse3 \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    gcc make \
+    pkg-config autoconf automake \
+    python3-docutils \
+    libseccomp-dev \
+    libjansson-dev \
+    libyaml-dev \
+    libxml2-dev
 RUN curl -SL https://deb.nodesource.com/setup_20.x | bash
 RUN apt-get install -y nodejs
 # neovim
@@ -58,9 +73,20 @@ RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appi
 RUN chmod u+x nvim.appimage
 RUN mv nvim.appimage nvim
 RUN chown student:student nvim
+# ctag
+WORKDIR /home/src
+RUN git clone https://github.com/universal-ctags/ctags.git
+WORKDIR /home/src/ctags
+RUN ./autogen.sh
+RUN ./configure --prefix=/usr/local
+RUN make
+RUN make install
 # fzf
 RUN git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 RUN ~/.fzf/install
+# chown
+RUN mkdir ~/.config/
+RUN chown student:student ~/.config
 #
 USER student
 RUN zsh
