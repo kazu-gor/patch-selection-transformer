@@ -32,6 +32,8 @@ WORKDIR /home/src
 RUN pip install --upgrade pip
 RUN pip install --upgrade setuptools
 RUN pip install -r ./requirements.txt
+RUN mim install mmcv-full
+RUN pip install mmcv-full==1.3.9 -f https://download.openmmlab.com/mmcv/dist/cu111/torch.1.9.0/index.html
 #
 ENV USER student
 ENV HOME /home/${USER}
@@ -87,6 +89,9 @@ RUN ~/.fzf/install
 # chown
 RUN mkdir ~/.config/
 RUN chown student:student ~/.config
+#
+RUN git config --global user.email ik126@icloud.com
+RUN git config --global user.name kazu-gor
 #
 USER student
 RUN zsh
