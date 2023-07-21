@@ -78,10 +78,14 @@ class PolypDataset(data.Dataset):
             ])
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
-            transforms.ToTensor()])
+            transforms.ToTensor()
+        ])
+        self.gt_totensor = transforms.Compose([
+            transforms.ToTensor()
+        ])
 
         # TODO: patch sizeに対応できるようにする
-        self.patch_size = 32
+        self.patch_size = 4
 
     def __getitem__(self, index):
         index = 6
@@ -101,7 +105,7 @@ class PolypDataset(data.Dataset):
             gt = gt.convert('L')
 
         image = self.img_transform(image)
-        # gt = self.gt_transform(gt)
+        gt = self.gt_transform(gt)
 
         ###########################################################
         # os.makedirs('./output', exist_ok=True)
@@ -113,8 +117,7 @@ class PolypDataset(data.Dataset):
         ###########################################################
 
         # TODO: パッチに分割する
-        # gt_patch = transforms.functional.to_pil_image(gt)
-        gt_patch = gt
+        gt_patch = transforms.functional.to_pil_image(gt)
 
         for i in range(gt.size()[-1] // self.patch_size):
             for j in range(gt.size()[-1] // self.patch_size):
@@ -126,6 +129,8 @@ class PolypDataset(data.Dataset):
                 ))
                 # TODO: convert images to class labels
                 # TODO: concat patch
+
+        gt = self.gt_totensor(gt)
 
         return image, gt_patch
 
