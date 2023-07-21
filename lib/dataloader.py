@@ -74,45 +74,58 @@ class PolypDataset(data.Dataset):
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406],
-                                 [0.229, 0.224, 0.225])])
+                                 [0.229, 0.224, 0.225])
+            ])
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor()])
 
-        self.proj = nn.Conv2d(3, 3, kernel_size=7, strid=7)
+        # TODO: patch sizeに対応できるようにする
+        self.patch_size = 32
 
     def __getitem__(self, index):
+        index = 6
         image = self.rgb_loader(self.images[index])
         gt = self.binary_loader(self.gts[index])
-        print(f"{gt.shape=}")
         if self.phase == 'train':
-            # if random.random() < 1.0:
-            #     image, gt = self._apply_mixup(image, gt, index)
-
-            # if random.random() < 1.0:
-            #     image, gt = self.cutmix(image, gt, index)
 
             image = np.array(image)
             gt = np.array(gt)
 
-            # image, gt = self.augment_and_mix(image, gt)
-
-            # augmented = self.transform2(image=image, mask=gt)
             augmented = self.transform3(image=image, mask=gt)
-
             image, gt = augmented['image'], augmented['mask']
+
             image = Image.fromarray(image)
             gt = Image.fromarray(gt)
             image = image.convert('RGB')
             gt = gt.convert('L')
 
-        # image, gt = self.transform(image, gt, phase=self.phase)
         image = self.img_transform(image)
-        gt = self.gt_transform(gt)
+        # gt = self.gt_transform(gt)
+
+        ###########################################################
+        # os.makedirs('./output', exist_ok=True)
+        # os.makedirs('./output/image', exist_ok=True)
+        # os.makedirs('./output/image/gt', exist_ok=True)
+        # os.makedirs('./output/image/gt_patch', exist_ok=True)
+        # os.makedirs('./output/image/gt_patch_crop', exist_ok=True)
+        # transforms.functional.to_pil_image(gt).save(f'./output/image/gt/gt_{index}.jpg')
+        ###########################################################
 
         # TODO: パッチに分割する
-        gt_patch = self.proj(gt)
-        print(f"{gt_patch.shape=}")
+        # gt_patch = transforms.functional.to_pil_image(gt)
+        gt_patch = gt
+
+        for i in range(gt.size()[-1] // self.patch_size):
+            for j in range(gt.size()[-1] // self.patch_size):
+                gt_patch_crop = gt_patch.crop((
+                    j * self.patch_size,
+                    i * self.patch_size,
+                    j * self.patch_size + self.patch_size,
+                    i * self.patch_size + self.patch_size,
+                ))
+                # TODO: convert images to class labels
+                # TODO: concat patch
 
         return image, gt_patch
 
