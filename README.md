@@ -22,5 +22,7 @@
     - [ ] Object Queryの数をSwin-Transformerの各Window内のPatch sizeに固定する
 - [ ] Dataset
     - [ ] targets sizeを元画像のpixel size数からObject Queryの数に変更
+- [ ] Criterion
+    - [ ] パッチ内にごく僅かな石灰化しか含まれない場合の考慮
 - [ ] Decoder
     - [ ] memoryとposのサイズが合わないバグ
