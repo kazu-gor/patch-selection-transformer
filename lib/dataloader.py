@@ -1,13 +1,14 @@
 import os
 from PIL import Image
+import torch
+import torch.nn as nn
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import albumentations as albu
 from lib.data_augumentation import Compose, Scale, RandomRotation, RandomMirror, Resize, Normalize_Tensor
-import numpy as np
 import cv2
+import numpy as np
 import random
-import torch
 
 
 class ImageTransform():
@@ -61,21 +62,6 @@ class PolypDataset(data.Dataset):
         self.transform2 = get_augmentation()
         self.phase = phase
 
-        # self.augmentations = [
-        #     albu.Rotate(limit=[-10, 10], p=1.0),
-        #     albu.ShiftScaleRotate(shift_limit=[-0.0625, 0.0625], scale_limit=[-0.1, 0.1], rotate_limit=[-30, 30],
-        #                           interpolation=1, border_mode=4, value=None, mask_value=None, p=1.0),
-        #     albu.RandomBrightness(limit=0.2, p=1.0),
-        #     albu.RandomContrast(limit=0.2, p=1.0),
-        #     # albu.RandomBrightnessContrast(brightness_limit=0.5, contrast_limit=0.5, brightness_by_max=True, p=1.0),
-        #     albu.RandomGamma(gamma_limit=[50, 150], p=1.0),
-        #     # albu.RandomGridShuffle(grid=(2, 2), p=1.0),
-        #     # albu.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
-        #     albu.RandomSizedCrop([300, 400], 416, 416, p=1.0),
-        #     # albu.CoarseDropout(max_holes=16, max_height=32, max_width=32, min_holes=1, min_height=8,
-        #     #                    min_width=8, fill_value=0, p=1.0)
-        # ]
-
         self.transform3 = albu.Compose(
             [
                 albu.ShiftScaleRotate(shift_limit=0.15, scale_limit=0.15, rotate_limit=25, p=0.5, border_mode=0),
@@ -93,9 +79,12 @@ class PolypDataset(data.Dataset):
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor()])
 
+        self.proj = nn.Conv2d(3, 3, kernel_size=7, strid=7)
+
     def __getitem__(self, index):
         image = self.rgb_loader(self.images[index])
         gt = self.binary_loader(self.gts[index])
+        print(f"{gt.shape=}")
         if self.phase == 'train':
             # if random.random() < 1.0:
             #     image, gt = self._apply_mixup(image, gt, index)
@@ -119,9 +108,13 @@ class PolypDataset(data.Dataset):
 
         # image, gt = self.transform(image, gt, phase=self.phase)
         image = self.img_transform(image)
-
         gt = self.gt_transform(gt)
-        return image, gt
+
+        # TODO: パッチに分割する
+        gt_patch = self.proj(gt)
+        print(f"{gt_patch.shape=}")
+
+        return image, gt_patch
 
     def _apply_mixup(self, image1, gt1, idx1):
         image1 = np.array(image1)
