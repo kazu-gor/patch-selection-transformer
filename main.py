@@ -92,10 +92,12 @@ def main(config, args):
     # define dataloader
     train_loader = get_loader(image_root,
                               gt_root,
+                              shuffle=True,  # FIXME
                               batchsize=config.DATA.BATCH_SIZE,
                               trainsize=config.DATA.IMG_SIZE)
     val_loader = get_loader(image_root_val,
                             gt_root_val,
+                            shuffle=False,
                             batchsize=config.DATA.BATCH_SIZE,
                             trainsize=config.DATA.IMG_SIZE,
                             phase='val')
