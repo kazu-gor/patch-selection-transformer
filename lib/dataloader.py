@@ -47,7 +47,7 @@ class PolypDataset(data.Dataset):
     dataloader for polyp segmentation tasks
     """
 
-    def __init__(self, image_root, gt_root, trainsize, phase='train'):
+    def __init__(self, image_root, gt_root, trainsize, patch_size, phase='train'):
         self.trainsize = trainsize
         self.images = [image_root + f for f in os.listdir(image_root) if f.endswith('.jpg') or f.endswith('.png')]
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith('.png')]
@@ -76,19 +76,21 @@ class PolypDataset(data.Dataset):
             transforms.Normalize([0.485, 0.456, 0.406],
                                  [0.229, 0.224, 0.225])
             ])
+
         self.gt_transform = transforms.Compose([
             transforms.Resize((self.trainsize, self.trainsize)),
             transforms.ToTensor()
         ])
-        self.gt_totensor = transforms.Compose([
-            transforms.ToTensor()
-        ])
 
-        # TODO: patch sizeに対応できるようにする
-        self.patch_size = 4
+        # self.gt_totensor = transforms.Compose([
+        #     transforms.ToTensor()
+        # ])
+
+        self.patch_size = patch_size
+
+        self.weight = 1
 
     def __getitem__(self, index):
-        index = 6
         image = self.rgb_loader(self.images[index])
         gt = self.binary_loader(self.gts[index])
         if self.phase == 'train':
@@ -107,32 +109,44 @@ class PolypDataset(data.Dataset):
         image = self.img_transform(image)
         gt = self.gt_transform(gt)
 
-        ###########################################################
-        # os.makedirs('./output', exist_ok=True)
-        # os.makedirs('./output/image', exist_ok=True)
-        # os.makedirs('./output/image/gt', exist_ok=True)
-        # os.makedirs('./output/image/gt_patch', exist_ok=True)
-        # os.makedirs('./output/image/gt_patch_crop', exist_ok=True)
-        # transforms.functional.to_pil_image(gt).save(f'./output/image/gt/gt_{index}.jpg')
-        ###########################################################
-
-        # TODO: パッチに分割する
         gt_patch = transforms.functional.to_pil_image(gt)
 
-        for i in range(gt.size()[-1] // self.patch_size):
-            for j in range(gt.size()[-1] // self.patch_size):
-                gt_patch_crop = gt_patch.crop((
-                    j * self.patch_size,
-                    i * self.patch_size,
-                    j * self.patch_size + self.patch_size,
-                    i * self.patch_size + self.patch_size,
+        gt_stage1 = self._apply_patch_labels(
+            gt_patch, int(gt.size()[-1] // self.patch_size), weight=self.weight
+        )
+        gt_stage2 = self._apply_patch_labels(
+            gt_patch, int(gt.size()[-1] / 2 // self.patch_size), weight=self.weight*2
+        )
+        gt_stage3 = self._apply_patch_labels(
+            gt_patch, int(gt.size()[-1] / 4 // self.patch_size), weight=self.weight*4
+        )
+        return image, gt_stage1, gt_stage2, gt_stage3
+
+    def _apply_patch_labels(self, gt, window_size, weight):
+        labels = []
+        for i in range(window_size):
+            for j in range(window_size):
+                gt_patch_crop = gt.crop((
+                    j * self.patch_size * weight,
+                    i * self.patch_size * weight,
+                    j * self.patch_size * weight + self.patch_size * weight,
+                    i * self.patch_size * weight + self.patch_size * weight,
                 ))
-                # TODO: convert images to class labels
-                # TODO: concat patch
+                # gt_patch_crop.save(f'./output/image/gt_patch_crop/gt_weight{self.weight}_{i}_{j}.jpg')
 
-        gt = self.gt_totensor(gt)
+                gt_patch_crop_tensor = transforms.functional.to_tensor(
+                    gt_patch_crop
+                )
 
-        return image, gt_patch
+                # convert images to class labels, concat label
+                labels.append(
+                    torch.where(
+                        torch.einsum("ijk->i", gt_patch_crop_tensor) > 0,
+                        torch.tensor(1),
+                        torch.tensor(0),
+                    )
+                )
+        return torch.tensor(labels)
 
     def _apply_mixup(self, image1, gt1, idx1):
         image1 = np.array(image1)
@@ -265,9 +279,9 @@ class PolypDataset(data.Dataset):
         return self.size
 
 
-def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_workers=4, pin_memory=True, phase='train',
+def get_loader(image_root, gt_root, batchsize, trainsize, patch_size, shuffle=True, num_workers=4, pin_memory=True, phase='train',
                droplast=False):
-    dataset = PolypDataset(image_root, gt_root, trainsize, phase=phase)
+    dataset = PolypDataset(image_root, gt_root, trainsize, patch_size, phase=phase)
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batchsize,
                                   shuffle=shuffle,
